@@ -8,10 +8,25 @@ struct MenuBarPanelView: View {
     @Environment(FocusEngine.self) private var engine
     @Environment(\.openWindow) private var openWindow
     @State private var showSettings = false
+    @State private var confirmQuit = false
 
     private var theme: PhaseTheme { PhaseTheme.theme(for: engine.phase) }
 
     var body: some View {
+        Group {
+            if confirmQuit {
+                quitConfirm
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            } else {
+                panelContent
+                    .transition(.opacity)
+            }
+        }
+        .animation(.spring(duration: 0.3), value: confirmQuit)
+        .onDisappear { confirmQuit = false }
+    }
+
+    private var panelContent: some View {
         VStack(spacing: 12) {
             Button {
                 openWindow(id: "main")
@@ -86,23 +101,85 @@ struct MenuBarPanelView: View {
                            help: "Shield mode — block distractions anytime") {
                     engine.settings.standaloneShield.toggle()
                 }
-                footerIcon("pip.enter", help: "Floating mini-timer") {
-                    engine.settings.showMini.toggle()
-                }
                 footerIcon("gearshape.fill", help: "Settings") {
                     showSettings.toggle()
                 }
                 .popover(isPresented: $showSettings, arrowEdge: .bottom) {
                     SettingsView()
                 }
-                Button("Quit") { NSApp.terminate(nil) }
-                    .buttonStyle(.plain)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                footerIcon("power", help: "Quit Focus") {
+                    confirmQuit = true
+                }
             }
         }
         .padding(14)
         .frame(width: 280)
+    }
+
+    private var quitConfirm: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(theme.glow.opacity(0.14))
+                    .frame(width: 54, height: 54)
+                Image(systemName: "power")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(theme.glow)
+            }
+            .padding(.top, 8)
+            VStack(spacing: 4) {
+                Text("Quit Focus?")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                Text(quitCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack(spacing: 8) {
+                Button {
+                    confirmQuit = false
+                } label: {
+                    Text("Cancel")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(.quaternary.opacity(0.6)))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.escape, modifiers: [])
+                Button {
+                    NSApp.terminate(nil)
+                } label: {
+                    Text("Quit")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(theme.glow))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.return, modifiers: [])
+            }
+            .padding(.bottom, 4)
+        }
+        .padding(14)
+        .frame(width: 280)
+    }
+
+    private var quitCaption: String {
+        if engine.phase == .focus, engine.runState == .running || engine.runState == .paused {
+            let elapsed = engine.inFlow
+                ? engine.total + engine.overtime(at: Date())
+                : engine.total - engine.remaining(at: Date())
+            let minutes = Int(elapsed / 60)
+            if minutes >= 1 {
+                return "You're mid-focus — your \(minutes) focused min will be logged before quitting."
+            }
+        }
+        return "Timer, shield and sounds stop until you open it again."
     }
 
     private var subtitle: String {

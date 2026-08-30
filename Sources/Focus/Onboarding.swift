@@ -154,10 +154,10 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 14) {
                 featureRow("menubar.rectangle", "Always in your menu bar",
                            "A live countdown up top — the dropdown has full controls.")
-                featureRow("pip.enter", "Floating mini-timer",
-                           "A tiny glass pill that stays on top of every app and Space.")
+                featureRow("shield.fill", "Shield mode",
+                           "Flip the 🛡 to guard against distractions anytime — no session needed.")
                 featureRow("music.note", "Sound to sink into",
-                           "Trance, techno, lofi and ambient loops — or rain and deep noise.")
+                           "Trance, techno, lofi and ambient loops — rain, deep noise, or Spotify.")
             }
             Text("25 minutes. One thing. Let's go.")
                 .font(.system(size: 11, design: .rounded))

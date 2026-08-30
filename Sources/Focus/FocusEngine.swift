@@ -37,7 +37,6 @@ struct FocusSettings: Codable {
     var soundscapeVolume: Double = 0.5
     var spotifyURI: String = ""
     var hideDockIcon: Bool = false
-    var showMini: Bool = false
     var launchAtLogin: Bool = false
     var flowModeOn: Bool = true
     var shieldOn: Bool = false
@@ -77,7 +76,6 @@ extension FocusSettings {
         if let v = try? c.decodeIfPresent(Double.self, forKey: .soundscapeVolume) { soundscapeVolume = v }
         if let v = try? c.decodeIfPresent(String.self, forKey: .spotifyURI) { spotifyURI = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .hideDockIcon) { hideDockIcon = v }
-        if let v = try? c.decodeIfPresent(Bool.self, forKey: .showMini) { showMini = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .launchAtLogin) { launchAtLogin = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .flowModeOn) { flowModeOn = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .shieldOn) { shieldOn = v }
@@ -459,6 +457,22 @@ final class FocusEngine {
         if auto { start() }
     }
 
+    /// Called on app termination: quietly banks any meaningful partial focus time.
+    func logPartialOnQuit() {
+        guard phase == .focus, runState == .running || runState == .paused else { return }
+        let minutes: Int
+        let overtimeMin: Int
+        if inFlow {
+            overtimeMin = Int(overtime(at: Date()) / 60)
+            minutes = settings.focusMinutes + overtimeMin
+        } else {
+            overtimeMin = 0
+            minutes = Int(max(0, total - remaining(at: Date())) / 60)
+        }
+        guard minutes >= 1 else { return }
+        history.record(minutes: minutes, overtime: overtimeMin, intention: intention)
+    }
+
     /// Debug/snapshot helper: pretend `seconds` have already elapsed.
     func debugFastForward(_ seconds: TimeInterval) {
         endDate = endDate?.addingTimeInterval(-seconds)
@@ -485,7 +499,6 @@ final class FocusEngine {
     func applySettings() {
         sound.setVolume(Float(settings.soundscapeVolume))
         _ = NSApp.setActivationPolicy(settings.hideDockIcon ? .accessory : .regular)
-        MiniPanelController.shared.setVisible(settings.showMini, engine: self)
         DistractionShield.shared.sessionStateChanged()
         syncLoginItem()
     }

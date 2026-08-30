@@ -76,9 +76,6 @@ struct MainView: View {
                     openWindow(id: "insights")
                     NSApp.activate(ignoringOtherApps: true)
                 }
-                headerButton("pip.enter", help: "Floating mini-timer") {
-                    engine.settings.showMini.toggle()
-                }
                 headerButton("gearshape.fill", help: "Settings") {
                     showSettings.toggle()
                 }
@@ -500,7 +497,6 @@ struct SettingsView: View {
         Divider()
         sectionHeader("APPEARANCE")
         Toggle("Hide Dock icon", isOn: $engine.settings.hideDockIcon)
-        Toggle("Floating mini-timer", isOn: $engine.settings.showMini)
 
         Divider()
         Button {
@@ -513,7 +509,7 @@ struct SettingsView: View {
         }
         .controlSize(.small)
 
-        Text("Focus 1.0 — one thing at a time.")
+        Text("Focus \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") — one thing at a time.")
             .font(.system(size: 9))
             .foregroundStyle(.tertiary)
             .frame(maxWidth: .infinity)

@@ -45,8 +45,7 @@ git clone https://github.com/sakranolog/focus.git && cd focus
 - **Music & soundscapes** — four AI-generated seamless loops (Trance Focus, Deep Techno, Lofi Beats, Ambient Drift), procedurally synthesized Deep Noise / Rainfall / Ocean, or hand playback to **Spotify** (starts your playlist on focus, pauses on breaks). Drop extra tracks into `~/Library/Application Support/Focus/Music` and they appear in the menu.
 - **Insights** — weekly total with delta, a 16-week heatmap, "golden hours" histogram, top intentions, streaks, and flow minutes.
 - **Menu bar countdown** — glanceable live timer with a rich dropdown control panel (and a ⚙ of its own).
-- **Floating mini-timer** — a tiny always-on-top glass pill that follows you across Spaces and full-screen apps.
-- **Intentions** — type the one thing you're working on; press ↩ to start. It follows you into the mini-timer, notifications, and the shield.
+- **Intentions** — type the one thing you're working on; press ↩ to start. It follows you into notifications and the shield.
 - **Confirm & log partials** — skipping or resetting mid-session asks first and offers to log the partial focus time.
 - **Warm chimes & notifications** when phases end; breathing guide during breaks.
 - **Onboarding** — a five-step animated walkthrough on first run (replayable from Settings → General).
@@ -62,8 +61,8 @@ git clone https://github.com/sakranolog/focus.git && cd focus
 ## Controls
 
 - `⌘↩` start / pause · `↩` in the intention field starts the session
-- Menu bar icon → quick controls, insights, settings, quit
-- Pip button → floating mini-timer · chart button → insights
+- Menu bar icon → quick controls, insights, shield mode, settings, quit
+- Quitting mid-session logs your partial focus time automatically
 - Session history lives at `~/Library/Application Support/Focus/history.json`
 
 ## Development

@@ -10,6 +10,14 @@ struct SitePreset: Identifiable {
     var apps: [BlockedApp] = []
 }
 
+final class KeyablePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
+final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 enum SitePresets {
     static let all: [SitePreset] = [
         SitePreset(id: "social", name: "Social media",

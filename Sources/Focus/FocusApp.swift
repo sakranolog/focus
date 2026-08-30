@@ -137,6 +137,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         false // keep living in the menu bar
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        FocusEngine.shared.logPartialOnQuit()
+        return .terminateNow
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag { Self.reopenMainWindow?() }
         return true
