@@ -40,6 +40,7 @@ struct FocusSettings: Codable {
     var launchAtLogin: Bool = false
     var flowModeOn: Bool = true
     var motivationOn: Bool = true
+    var motivationMinutes: Int = 6
     var customMotivations: [String] = []
     var customMotivationsOnly: Bool = false
     var shieldOn: Bool = false
@@ -82,6 +83,7 @@ extension FocusSettings {
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .launchAtLogin) { launchAtLogin = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .flowModeOn) { flowModeOn = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .motivationOn) { motivationOn = v }
+        if let v = try? c.decodeIfPresent(Int.self, forKey: .motivationMinutes) { motivationMinutes = v }
         if let v = try? c.decodeIfPresent([String].self, forKey: .customMotivations) { customMotivations = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .customMotivationsOnly) { customMotivationsOnly = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .shieldOn) { shieldOn = v }
@@ -275,7 +277,11 @@ final class FocusEngine {
         overtimeStart = nil
         runState = .running
         now = Date()
-        nextMotivationAt = phase == .focus ? Date().addingTimeInterval(6 * 60) : nil
+        if phase == .focus {
+            scheduleNextMotivation(from: Date())
+        } else {
+            nextMotivationAt = nil
+        }
         startTimer()
         refreshSound()
         requestNotificationAuthIfNeeded()
@@ -390,6 +396,12 @@ final class FocusEngine {
             .min() ?? .infinity
     }
 
+    /// Next nudge lands at the chosen cadence, jittered ±30 s so it never feels mechanical.
+    private func scheduleNextMotivation(from date: Date) {
+        let base = Double(max(1, settings.motivationMinutes)) * 60
+        nextMotivationAt = date.addingTimeInterval(base + Double.random(in: -30...30))
+    }
+
     private func enterFlow() {
         overtimeStart = Date()
         endDate = nil
@@ -412,7 +424,7 @@ final class FocusEngine {
         if phase == .focus, settings.motivationOn,
            let nextM = nextMotivationAt, now >= nextM,
            inFlow || remaining(at: now) > 45 {
-            nextMotivationAt = now.addingTimeInterval(6 * 60)
+            scheduleNextMotivation(from: now)
             MotivationController.shared.show(engine: self)
         }
         if let start = overtimeStart {

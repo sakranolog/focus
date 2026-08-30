@@ -289,6 +289,7 @@ struct SettingsView: View {
                 .controlSize(.small)
         }
         if engine.settings.motivationOn {
+            durationRow("Nudge every (±30 s)", value: $engine.settings.motivationMinutes, range: 2...30, step: 1)
             motivationLines
         }
         Toggle("Confirm skip/reset, offer to log", isOn: $engine.settings.confirmAbort)
