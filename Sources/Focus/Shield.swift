@@ -90,7 +90,8 @@ extension FocusEngine {
 final class DistractionShield {
     static let shared = DistractionShield()
     private weak var engine: FocusEngine?
-    private var overlay: NSPanel?
+    private var overlays: [NSPanel] = []
+    private var overlay: NSPanel? { overlays.first }
     private var peekUntil = Date.distantPast
     private var peekTimer: Timer?
     private var urlTimer: Timer?
@@ -141,7 +142,8 @@ final class DistractionShield {
     }
 
     private func isGuarding(_ engine: FocusEngine) -> Bool {
-        engine.settings.shieldOn && engine.runState == .running && engine.phase == .focus
+        engine.settings.standaloneShield ||
+            (engine.settings.shieldOn && engine.runState == .running && engine.phase == .focus)
     }
 
     // MARK: - App shield
@@ -156,7 +158,7 @@ final class DistractionShield {
               bundleID != (Bundle.main.bundleIdentifier ?? ""),
               engine.settings.blockedApps.contains(where: { $0.bundleID == bundleID }),
               Date() >= peekUntil else { return }
-        show(name: app.localizedName ?? "That app", primaryLabel: "Back to focus") { [weak self] in
+        show(name: app.localizedName ?? "That app") { [weak self] in
             app.hide()
             self?.dismiss()
         }
@@ -217,7 +219,7 @@ final class DistractionShield {
             return host.contains(site)
         }
         guard let site = match else { return }
-        show(name: site, primaryLabel: "Close the tab") { [weak self] in
+        show(name: site) { [weak self] in
             self?.closeActiveTab(browserID: browserID)
             // brief grace so the next poll doesn't race the closing tab
             self?.peekUntil = Date().addingTimeInterval(3)
@@ -258,37 +260,44 @@ final class DistractionShield {
 
     // MARK: - Overlay
 
-    private func show(name: String, primaryLabel: String, onPrimary: @escaping () -> Void) {
+    private func show(name: String, onPrimary: @escaping () -> Void) {
         dismiss()
-        guard let engine, let screen = NSScreen.main else { return }
-        let view = ShieldOverlayView(
-            name: name,
-            primaryLabel: primaryLabel,
-            onPrimary: onPrimary,
-            onPeek: { [weak self] in self?.peek() },
-            onEnd: { [weak self] in
-                self?.dismiss()
-                self?.engine?.resetTapped()
-            })
-            .environment(engine)
-        let panel = KeyablePanel(contentRect: screen.frame,
-                                 styleMask: [.borderless, .nonactivatingPanel],
-                                 backing: .buffered, defer: false)
-        panel.level = .screenSaver
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = false
-        panel.contentView = FirstMouseHostingView(rootView: view)
-        panel.setFrame(screen.frame, display: true)
-        overlay = panel
-        panel.makeKeyAndOrderFront(nil)
-        panel.orderFrontRegardless()
+        guard let engine else { return }
+        // Cover every connected screen, so no display stays usable behind the nudge.
+        for screen in NSScreen.screens {
+            let view = ShieldOverlayView(
+                name: name,
+                onPrimary: onPrimary,
+                onPeek: { [weak self] in self?.peek() },
+                onEnd: { [weak self] in
+                    self?.dismiss()
+                    guard let engine = self?.engine else { return }
+                    if engine.runState == .running && engine.phase == .focus {
+                        engine.resetTapped()
+                    } else {
+                        engine.settings.standaloneShield = false
+                    }
+                })
+                .environment(engine)
+            let panel = KeyablePanel(contentRect: screen.frame,
+                                     styleMask: [.borderless, .nonactivatingPanel],
+                                     backing: .buffered, defer: false)
+            panel.level = .screenSaver
+            panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            panel.isOpaque = false
+            panel.backgroundColor = .clear
+            panel.hasShadow = false
+            panel.contentView = FirstMouseHostingView(rootView: view)
+            panel.setFrame(screen.frame, display: true)
+            overlays.append(panel)
+            panel.makeKeyAndOrderFront(nil)
+            panel.orderFrontRegardless()
+        }
     }
 
     func dismiss() {
-        overlay?.orderOut(nil)
-        overlay = nil
+        overlays.forEach { $0.orderOut(nil) }
+        overlays.removeAll()
         peekTimer?.invalidate()
         peekTimer = nil
     }
@@ -309,12 +318,12 @@ final class DistractionShield {
 struct ShieldOverlayView: View {
     @Environment(FocusEngine.self) private var engine
     let name: String
-    var primaryLabel: String = "Back to focus"
     let onPrimary: () -> Void
     let onPeek: () -> Void
     let onEnd: () -> Void
 
     private var theme: PhaseTheme { PhaseTheme.theme(for: .focus) }
+    private var sessionActive: Bool { engine.runState == .running && engine.phase == .focus }
 
     var body: some View {
         ZStack {
@@ -331,7 +340,7 @@ struct ShieldOverlayView: View {
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .tracking(4)
                     .foregroundStyle(.white.opacity(0.45))
-                Text(engine.intention.isEmpty ? "You're mid-focus." : "“\(engine.intention)”")
+                Text(headline)
                     .font(.system(size: 30, weight: .medium, design: .rounded))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
@@ -342,13 +351,13 @@ struct ShieldOverlayView: View {
                         .foregroundStyle(.white.opacity(0.65))
                 }
                 HStack(spacing: 14) {
-                    shieldButton(primaryLabel, prominent: true, action: onPrimary)
+                    shieldButton("Back to focus", prominent: true, action: onPrimary)
                         .keyboardShortcut(.return, modifiers: [])
                     shieldButton("1-minute peek", action: onPeek)
                         .keyboardShortcut(.escape, modifiers: [])
                 }
                 .padding(.top, 10)
-                Button("End session", action: onEnd)
+                Button(sessionActive ? "End session" : "Turn off shield", action: onEnd)
                     .buttonStyle(.plain)
                     .font(.system(size: 12, design: .rounded))
                     .foregroundStyle(.white.opacity(0.4))
@@ -358,7 +367,15 @@ struct ShieldOverlayView: View {
         .preferredColorScheme(.dark)
     }
 
+    private var headline: String {
+        guard sessionActive else { return "Not now." }
+        return engine.intention.isEmpty ? "You're mid-focus." : "“\(engine.intention)”"
+    }
+
     private func subtitle(at date: Date) -> String {
+        guard sessionActive else {
+            return "\(name) can wait — the shield is up."
+        }
         if engine.inFlow {
             return "\(name) can wait — you're \(engine.displayTime(at: date)) into flow."
         }

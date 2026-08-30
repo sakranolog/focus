@@ -1,5 +1,51 @@
 import AVFoundation
 import Foundation
+import AppKit
+
+/// Fire-and-forget AppleScript runner (osascript subprocess; never blocks).
+func runAppleScript(_ script: String) {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+    process.arguments = ["-e", script]
+    process.standardOutput = Pipe()
+    process.standardError = Pipe()
+    try? process.run()
+}
+
+/// Drives the Spotify desktop app via Apple Events — no API keys needed.
+enum SpotifyController {
+    private static let bundleID = "com.spotify.client"
+
+    private static var isRunning: Bool {
+        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == bundleID }
+    }
+
+    static func play(uri: String?) {
+        let body: String
+        if let uri, !uri.isEmpty {
+            body = "try\nplay track \"\(uri)\"\non error\nplay\nend try"
+        } else {
+            body = "play"
+        }
+        let script = "tell application id \"\(bundleID)\"\n\(body)\nend tell"
+        if isRunning {
+            runAppleScript(script)
+        } else if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+            let config = NSWorkspace.OpenConfiguration()
+            config.activates = false
+            NSWorkspace.shared.openApplication(at: url, configuration: config) { _, _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    runAppleScript(script)
+                }
+            }
+        }
+    }
+
+    static func pause() {
+        guard isRunning else { return }
+        runAppleScript("tell application id \"\(bundleID)\" to pause")
+    }
+}
 
 enum Soundscape: String, CaseIterable, Identifiable {
     case off, noise, rain, ocean

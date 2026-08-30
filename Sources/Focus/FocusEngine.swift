@@ -35,11 +35,13 @@ struct FocusSettings: Codable {
     var chimeOn: Bool = true
     var soundscapeRaw: String = "off"
     var soundscapeVolume: Double = 0.5
+    var spotifyURI: String = ""
     var hideDockIcon: Bool = false
     var showMini: Bool = false
     var launchAtLogin: Bool = false
     var flowModeOn: Bool = true
     var shieldOn: Bool = false
+    var standaloneShield: Bool = false
     var confirmAbort: Bool = true
     var blockedApps: [BlockedApp] = []
     var blockedSites: [String] = []
@@ -73,11 +75,13 @@ extension FocusSettings {
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .chimeOn) { chimeOn = v }
         if let v = try? c.decodeIfPresent(String.self, forKey: .soundscapeRaw) { soundscapeRaw = v }
         if let v = try? c.decodeIfPresent(Double.self, forKey: .soundscapeVolume) { soundscapeVolume = v }
+        if let v = try? c.decodeIfPresent(String.self, forKey: .spotifyURI) { spotifyURI = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .hideDockIcon) { hideDockIcon = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .showMini) { showMini = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .launchAtLogin) { launchAtLogin = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .flowModeOn) { flowModeOn = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .shieldOn) { shieldOn = v }
+        if let v = try? c.decodeIfPresent(Bool.self, forKey: .standaloneShield) { standaloneShield = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .confirmAbort) { confirmAbort = v }
         if let v = try? c.decodeIfPresent([BlockedApp].self, forKey: .blockedApps) { blockedApps = v }
         if let v = try? c.decodeIfPresent([String].self, forKey: .blockedSites) { blockedSites = v }
@@ -85,14 +89,17 @@ extension FocusSettings {
     }
 }
 
-/// What plays during focus: nothing, a procedural soundscape, or a music track.
+/// What plays during focus: nothing, a procedural soundscape, a bundled track, or Spotify.
 enum SoundChoice: Equatable {
     case off
     case scape(Soundscape)
     case music(String)
+    case spotify
 
     init(raw: String) {
-        if raw.hasPrefix("music:") {
+        if raw == "spotify" {
+            self = .spotify
+        } else if raw.hasPrefix("music:") {
             self = .music(String(raw.dropFirst("music:".count)))
         } else if let s = Soundscape(rawValue: raw), s != .off {
             self = .scape(s)
@@ -106,6 +113,7 @@ enum SoundChoice: Equatable {
         case .off: return "speaker.slash"
         case .scape(let s): return s.symbol
         case .music: return "music.note"
+        case .spotify: return "music.note.list"
         }
     }
 }
@@ -146,13 +154,18 @@ final class FocusEngine {
     var soundChoice: SoundChoice { SoundChoice(raw: settings.soundscapeRaw) }
 
     func setSound(raw: String) {
+        let previous = soundChoice
         settings.soundscapeRaw = raw
+        if previous == .spotify && soundChoice != .spotify {
+            SpotifyController.pause()
+        }
         refreshSound()
     }
 
     func refreshSound() {
         guard runState == .running && phase == .focus else {
             sound.stopAll()
+            if soundChoice == .spotify { SpotifyController.pause() }
             return
         }
         switch soundChoice {
@@ -166,7 +179,24 @@ final class FocusEngine {
             } else {
                 sound.stopAll()
             }
+        case .spotify:
+            sound.stopAll()
+            SpotifyController.play(uri: Self.normalizeSpotifyURI(settings.spotifyURI))
         }
+    }
+
+    /// "https://open.spotify.com/playlist/ID?si=…" → "spotify:playlist:ID"; passes spotify: URIs through.
+    static func normalizeSpotifyURI(_ input: String) -> String? {
+        let s = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty else { return nil }
+        if s.hasPrefix("spotify:") { return s }
+        if let url = URL(string: s), let host = url.host, host.contains("spotify.com") {
+            let parts = url.pathComponents.filter { $0 != "/" }
+            if parts.count >= 2 {
+                return "spotify:\(parts[parts.count - 2]):\(parts[parts.count - 1])"
+            }
+        }
+        return nil
     }
 
     // MARK: - Time math (endDate-based, so it survives sleep/App Nap)
@@ -251,7 +281,7 @@ final class FocusEngine {
         pausedRemaining = remaining(at: Date())
         runState = .paused
         stopTimer()
-        sound.stopAll()
+        refreshSound()
         DistractionShield.shared.sessionStateChanged()
     }
 
@@ -261,7 +291,7 @@ final class FocusEngine {
         pausedRemaining = nil
         overtimeStart = nil
         stopTimer()
-        sound.stopAll()
+        refreshSound()
         DistractionShield.shared.sessionStateChanged()
     }
 
@@ -423,6 +453,7 @@ final class FocusEngine {
 
         phase = next
         runState = .idle
+        refreshSound()
         DistractionShield.shared.sessionStateChanged()
         let auto = completed && (next == .focus ? settings.autoStartFocus : settings.autoStartBreaks)
         if auto { start() }

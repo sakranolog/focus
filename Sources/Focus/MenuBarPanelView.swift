@@ -36,11 +36,15 @@ struct MenuBarPanelView: View {
                 }
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 smallControl(engine.runState == .running ? "pause.fill" : "play.fill") { engine.toggle() }
                 smallControl("forward.end.fill") { engine.skipTapped() }
                 smallControl("arrow.counterclockwise") { engine.resetTapped() }
                 Spacer()
+                smallControl(engine.settings.standaloneShield ? "shield.fill" : "shield",
+                             tinted: engine.settings.standaloneShield) {
+                    engine.settings.standaloneShield.toggle()
+                }
                 smallControl("chart.bar.xaxis") {
                     openWindow(id: "insights")
                     NSApp.activate(ignoringOtherApps: true)
@@ -89,11 +93,13 @@ struct MenuBarPanelView: View {
         return engine.phase.title
     }
 
-    private func smallControl(_ symbol: String, action: @escaping () -> Void) -> some View {
+    private func smallControl(_ symbol: String, tinted: Bool = false,
+                              action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 12, weight: .semibold))
-                .frame(width: 32, height: 26)
+                .foregroundStyle(tinted ? AnyShapeStyle(theme.glow) : AnyShapeStyle(.primary))
+                .frame(width: 30, height: 26)
                 .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 7))
                 .contentShape(RoundedRectangle(cornerRadius: 7))
         }

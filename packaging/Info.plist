@@ -33,6 +33,6 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>One thing at a time.</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Focus reads the active browser tab so the Distraction Shield can catch blocked websites during focus sessions.</string>
+	<string>Focus reads the active browser tab so the Distraction Shield can catch blocked websites, and controls Spotify playback during focus sessions.</string>
 </dict>
 </plist>

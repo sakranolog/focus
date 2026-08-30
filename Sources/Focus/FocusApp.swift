@@ -22,7 +22,6 @@ struct FocusApp: App {
                 engine.start()
                 engine.debugFastForward(engine.total * 0.4)
                 Self.writeSnapshot(ShieldOverlayView(name: "twitter.com",
-                                                     primaryLabel: "Close the tab",
                                                      onPrimary: {}, onPeek: {}, onEnd: {})
                     .environment(engine)
                     .frame(width: 900, height: 560), to: path)

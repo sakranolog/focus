@@ -59,6 +59,19 @@ struct MainView: View {
                 .foregroundStyle(.white.opacity(0.30))
             HStack(spacing: 4) {
                 Spacer()
+                Button {
+                    engine.settings.standaloneShield.toggle()
+                } label: {
+                    Image(systemName: engine.settings.standaloneShield ? "shield.fill" : "shield")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(engine.settings.standaloneShield
+                            ? AnyShapeStyle(theme.glow)
+                            : AnyShapeStyle(.white.opacity(0.55)))
+                        .frame(width: 26, height: 26)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Shield mode — block distractions without a session")
                 headerButton("chart.bar.xaxis", help: "Insights") {
                     openWindow(id: "insights")
                     NSApp.activate(ignoringOtherApps: true)
@@ -190,6 +203,9 @@ struct MainView: View {
                         }
                     }
                 }
+                Section("Apps") {
+                    Label("Spotify", systemImage: "music.note.list").tag("spotify")
+                }
             }
             .pickerStyle(.inline)
         } label: {
@@ -267,14 +283,17 @@ struct SettingsView: View {
     private var shieldTab: some View {
         @Bindable var engine = engine
         Toggle(isOn: $engine.settings.shieldOn) {
-            Label("Distraction shield", systemImage: "shield.lefthalf.filled")
+            Label("Shield during focus sessions", systemImage: "shield.lefthalf.filled")
         }
-        Text("During focus, blocked apps and websites get a gentle full-screen nudge.")
+        Toggle(isOn: $engine.settings.standaloneShield) {
+            Label("Shield mode — always on", systemImage: "shield.fill")
+        }
+        Text("Blocked apps and websites get a gentle full-screen nudge. Shield mode guards even without a session — toggle it from the 🛡 in the main window or menu bar.")
             .font(.system(size: 10))
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
 
-        if engine.settings.shieldOn {
+        if engine.settings.shieldOn || engine.settings.standaloneShield {
             Divider()
             sectionHeader("APPS")
             listContainer {
@@ -435,9 +454,21 @@ struct SettingsView: View {
                     Text(t.name).tag("music:" + t.name)
                 }
             }
+            Section("Apps") {
+                Text("Spotify").tag("spotify")
+            }
         }
         .labelsHidden()
         .controlSize(.small)
+        if engine.soundChoice == .spotify {
+            TextField("Spotify playlist link (optional)", text: $engine.settings.spotifyURI)
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+            Text("Focus starts your playlist when a session begins and pauses Spotify on breaks. Leave empty to resume your queue. Needs the Spotify app.")
+                .font(.system(size: 9))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
         HStack(spacing: 8) {
             Image(systemName: "speaker.wave.1").foregroundStyle(.secondary)
             Slider(value: $engine.settings.soundscapeVolume, in: 0...1)
