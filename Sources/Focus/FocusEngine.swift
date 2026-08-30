@@ -40,6 +40,8 @@ struct FocusSettings: Codable {
     var launchAtLogin: Bool = false
     var flowModeOn: Bool = true
     var motivationOn: Bool = true
+    var customMotivations: [String] = []
+    var customMotivationsOnly: Bool = false
     var shieldOn: Bool = false
     var standaloneShield: Bool = false
     var confirmAbort: Bool = true
@@ -80,6 +82,8 @@ extension FocusSettings {
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .launchAtLogin) { launchAtLogin = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .flowModeOn) { flowModeOn = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .motivationOn) { motivationOn = v }
+        if let v = try? c.decodeIfPresent([String].self, forKey: .customMotivations) { customMotivations = v }
+        if let v = try? c.decodeIfPresent(Bool.self, forKey: .customMotivationsOnly) { customMotivationsOnly = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .shieldOn) { shieldOn = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .standaloneShield) { standaloneShield = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .confirmAbort) { confirmAbort = v }

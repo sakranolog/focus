@@ -236,6 +236,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("settingsTab") private var tab = 0
     @State private var newSite = ""
+    @State private var newLine = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
@@ -282,13 +283,47 @@ struct SettingsView: View {
             .help("If you're still typing when the timer ends, it keeps rolling until you go idle.")
         HStack {
             Toggle("Motivational nudges on screen", isOn: $engine.settings.motivationOn)
-                .help("Every few minutes of focus, a glowing message drifts up from the bottom of your screen. Click-through — it never interrupts.")
+                .help("Every few minutes of focus, a glowing message drifts up from the bottom of your screen. Click it to dismiss.")
             Spacer()
             Button("Test") { MotivationController.shared.show(engine: engine) }
                 .controlSize(.small)
         }
+        if engine.settings.motivationOn {
+            motivationLines
+        }
         Toggle("Confirm skip/reset, offer to log", isOn: $engine.settings.confirmAbort)
             .help("Skipping or resetting mid-session asks first and can log the partial time.")
+    }
+
+    @ViewBuilder
+    private var motivationLines: some View {
+        @Bindable var engine = engine
+        if !engine.settings.customMotivations.isEmpty {
+            listContainer {
+                ForEach(engine.settings.customMotivations, id: \.self) { line in
+                    removableRow(icon: "quote.opening", text: line) {
+                        engine.settings.customMotivations.removeAll { $0 == line }
+                    }
+                }
+            }
+            Toggle("Show only my lines", isOn: $engine.settings.customMotivationsOnly)
+        }
+        HStack(spacing: 6) {
+            TextField("Add your own line…", text: $newLine)
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+                .onSubmit { addLine() }
+            Button("Add") { addLine() }
+                .controlSize(.small)
+                .disabled(newLine.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+    }
+
+    private func addLine() {
+        let line = newLine.trimmingCharacters(in: .whitespacesAndNewlines)
+        newLine = ""
+        guard !line.isEmpty, !engine.settings.customMotivations.contains(line) else { return }
+        engine.settings.customMotivations.append(line)
     }
 
     // MARK: Shield
