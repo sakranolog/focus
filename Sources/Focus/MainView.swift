@@ -52,39 +52,28 @@ struct MainView: View {
     // MARK: - Pieces
 
     private var header: some View {
-        ZStack {
-            Text("FOCUS")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .tracking(5)
-                .foregroundStyle(.white.opacity(0.30))
-            HStack(spacing: 4) {
-                Spacer()
-                Button {
-                    engine.settings.standaloneShield.toggle()
-                } label: {
-                    Image(systemName: engine.settings.standaloneShield ? "shield.fill" : "shield")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(engine.settings.standaloneShield
-                            ? AnyShapeStyle(theme.glow)
-                            : AnyShapeStyle(.white.opacity(0.55)))
-                        .frame(width: 26, height: 26)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Shield mode — block distractions without a session")
-                headerButton("chart.bar.xaxis", help: "Insights") {
-                    openWindow(id: "insights")
-                    NSApp.activate(ignoringOtherApps: true)
-                }
-                headerButton("gearshape.fill", help: "Settings") {
-                    showSettings.toggle()
-                }
-                .popover(isPresented: $showSettings, arrowEdge: .bottom) {
-                    SettingsView()
-                }
-            }
+        Text("FOCUS")
+            .font(.system(size: 11, weight: .bold, design: .rounded))
+            .tracking(5)
+            .foregroundStyle(.white.opacity(0.30))
+            .frame(maxWidth: .infinity)
+            .padding(.top, 8)
+    }
+
+    private var shieldToggle: some View {
+        Button {
+            engine.settings.standaloneShield.toggle()
+        } label: {
+            Image(systemName: engine.settings.standaloneShield ? "shield.fill" : "shield")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(engine.settings.standaloneShield
+                    ? AnyShapeStyle(theme.glow)
+                    : AnyShapeStyle(.white.opacity(0.55)))
+                .frame(width: 26, height: 26)
+                .contentShape(Rectangle())
         }
-        .padding(.top, 4)
+        .buttonStyle(.plain)
+        .help("Shield mode — block distractions without a session")
     }
 
     private func headerButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
@@ -171,50 +160,71 @@ struct MainView: View {
     }
 
     private var footer: some View {
-        HStack {
+        HStack(spacing: 4) {
             soundMenu
+            shieldToggle
             Spacer()
             Text(engine.history.summaryLine)
                 .font(.system(size: 11, design: .rounded))
                 .foregroundStyle(.white.opacity(0.4))
+                .lineLimit(1)
             Spacer()
-            Color.clear.frame(width: 28, height: 28)
+            headerButton("chart.bar.xaxis", help: "Insights") {
+                openWindow(id: "insights")
+                NSApp.activate(ignoringOtherApps: true)
+            }
+            headerButton("gearshape.fill", help: "Settings") {
+                showSettings.toggle()
+            }
+            .popover(isPresented: $showSettings, arrowEdge: .top) {
+                SettingsView()
+            }
         }
     }
 
     private var soundMenu: some View {
-        let tracks = MusicLibrary.tracks()
-        return Menu {
-            Picker("Sound", selection: Binding(get: { engine.settings.soundscapeRaw },
-                                               set: { engine.setSound(raw: $0) })) {
-                Label("Silence", systemImage: "speaker.slash").tag("off")
-                Section("Noise") {
-                    ForEach([Soundscape.noise, .rain, .ocean]) { s in
-                        Label(s.name, systemImage: s.symbol).tag(s.rawValue)
-                    }
-                }
-                if !tracks.isEmpty {
-                    Section("Music") {
-                        ForEach(tracks) { t in
-                            Label(t.name, systemImage: "music.note").tag("music:" + t.name)
-                        }
-                    }
-                }
-                Section("Apps") {
-                    Label("Spotify", systemImage: "music.note.list").tag("spotify")
-                }
-            }
-            .pickerStyle(.inline)
+        Menu {
+            SoundPickerContent()
         } label: {
             Image(systemName: engine.soundChoice.symbol)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.white.opacity(0.55))
-                .frame(width: 28, height: 28)
+                .frame(width: 26, height: 26)
         }
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Focus sound — noise or music")
+        .help("Focus sound — noise, music or Spotify")
+    }
+}
+
+/// The shared sound picker (Silence / Noise / Music / Spotify), used by the
+/// main window footer and the menu bar panel.
+struct SoundPickerContent: View {
+    @Environment(FocusEngine.self) private var engine
+
+    var body: some View {
+        let tracks = MusicLibrary.tracks()
+        Picker("Sound", selection: Binding(get: { engine.settings.soundscapeRaw },
+                                           set: { engine.setSound(raw: $0) })) {
+            Label("Silence", systemImage: "speaker.slash").tag("off")
+            Section("Noise") {
+                ForEach([Soundscape.noise, .rain, .ocean]) { s in
+                    Label(s.name, systemImage: s.symbol).tag(s.rawValue)
+                }
+            }
+            if !tracks.isEmpty {
+                Section("Music") {
+                    ForEach(tracks) { t in
+                        Label(t.name, systemImage: "music.note").tag("music:" + t.name)
+                    }
+                }
+            }
+            Section("Apps") {
+                Label("Spotify", systemImage: "music.note.list").tag("spotify")
+            }
+        }
+        .pickerStyle(.inline)
     }
 }
 
@@ -270,8 +280,13 @@ struct SettingsView: View {
         Toggle("Auto-start next focus", isOn: $engine.settings.autoStartFocus)
         Toggle("Flow mode — extend while active", isOn: $engine.settings.flowModeOn)
             .help("If you're still typing when the timer ends, it keeps rolling until you go idle.")
-        Toggle("Motivational nudges on screen", isOn: $engine.settings.motivationOn)
-            .help("Every few minutes of focus, a glowing message drifts up from the bottom of your screen. Click-through — it never interrupts.")
+        HStack {
+            Toggle("Motivational nudges on screen", isOn: $engine.settings.motivationOn)
+                .help("Every few minutes of focus, a glowing message drifts up from the bottom of your screen. Click-through — it never interrupts.")
+            Spacer()
+            Button("Test") { MotivationController.shared.show(engine: engine) }
+                .controlSize(.small)
+        }
         Toggle("Confirm skip/reset, offer to log", isOn: $engine.settings.confirmAbort)
             .help("Skipping or resetting mid-session asks first and can log the partial time.")
     }

@@ -96,6 +96,19 @@ struct MenuBarPanelView: View {
 
                 Spacer()
 
+                Menu {
+                    SoundPickerContent()
+                } label: {
+                    Image(systemName: engine.soundChoice.symbol)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 22, height: 20)
+                }
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Focus sound — noise, music or Spotify")
+
                 footerIcon(engine.settings.standaloneShield ? "shield.fill" : "shield",
                            tinted: engine.settings.standaloneShield,
                            help: "Shield mode — block distractions anytime") {
