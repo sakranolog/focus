@@ -47,6 +47,7 @@ git clone https://github.com/sakranolog/focus.git && cd focus
 - **Menu bar countdown** — glanceable live timer with a rich dropdown control panel (and a ⚙ of its own).
 - **Intentions** — type the one thing you're working on; press ↩ to start. It follows you into notifications and the shield.
 - **Confirm & log partials** — skipping or resetting mid-session asks first and offers to log the partial focus time.
+- **Motivational aura nudges** — every few minutes of focus, a glowing message drifts up from the bottom of your screen ("Deep in it. Stay there.") with the time left. Click-through, context-aware (flow, final stretch, your intention), and toggleable in Settings.
 - **Warm chimes & notifications** when phases end; breathing guide during breaks.
 - **Onboarding** — a five-step animated walkthrough on first run (replayable from Settings → General).
 - **Launch at login & hide Dock icon** — run it as a quiet menu-bar companion.

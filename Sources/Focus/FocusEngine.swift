@@ -39,6 +39,7 @@ struct FocusSettings: Codable {
     var hideDockIcon: Bool = false
     var launchAtLogin: Bool = false
     var flowModeOn: Bool = true
+    var motivationOn: Bool = true
     var shieldOn: Bool = false
     var standaloneShield: Bool = false
     var confirmAbort: Bool = true
@@ -78,6 +79,7 @@ extension FocusSettings {
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .hideDockIcon) { hideDockIcon = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .launchAtLogin) { launchAtLogin = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .flowModeOn) { flowModeOn = v }
+        if let v = try? c.decodeIfPresent(Bool.self, forKey: .motivationOn) { motivationOn = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .shieldOn) { shieldOn = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .standaloneShield) { standaloneShield = v }
         if let v = try? c.decodeIfPresent(Bool.self, forKey: .confirmAbort) { confirmAbort = v }
@@ -141,6 +143,7 @@ final class FocusEngine {
     private var pausedRemaining: TimeInterval?
     private var timer: Timer?
     private var askedNotificationAuth = false
+    private var nextMotivationAt: Date?
 
     private init() {
         settings = FocusSettings.load()
@@ -268,6 +271,7 @@ final class FocusEngine {
         overtimeStart = nil
         runState = .running
         now = Date()
+        nextMotivationAt = phase == .focus ? Date().addingTimeInterval(6 * 60) : nil
         startTimer()
         refreshSound()
         requestNotificationAuthIfNeeded()
@@ -278,6 +282,8 @@ final class FocusEngine {
         guard runState == .running, !inFlow else { return }
         pausedRemaining = remaining(at: Date())
         runState = .paused
+        nextMotivationAt = nil
+        MotivationController.shared.dismiss()
         stopTimer()
         refreshSound()
         DistractionShield.shared.sessionStateChanged()
@@ -288,6 +294,8 @@ final class FocusEngine {
         endDate = nil
         pausedRemaining = nil
         overtimeStart = nil
+        nextMotivationAt = nil
+        MotivationController.shared.dismiss()
         stopTimer()
         refreshSound()
         DistractionShield.shared.sessionStateChanged()
@@ -397,6 +405,12 @@ final class FocusEngine {
     private func tick() {
         now = Date()
         guard runState == .running else { return }
+        if phase == .focus, settings.motivationOn,
+           let nextM = nextMotivationAt, now >= nextM,
+           inFlow || remaining(at: now) > 45 {
+            nextMotivationAt = now.addingTimeInterval(6 * 60)
+            MotivationController.shared.show(engine: self)
+        }
         if let start = overtimeStart {
             let idle = Self.secondsSinceLastInput()
             if idle >= 120 {
@@ -416,6 +430,8 @@ final class FocusEngine {
     private func advance(completed: Bool, overtimeMinutes: Int = 0) {
         let finished = phase
         overtimeStart = nil
+        nextMotivationAt = nil
+        MotivationController.shared.dismiss()
         stopTimer()
         endDate = nil
         pausedRemaining = nil

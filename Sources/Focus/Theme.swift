@@ -122,14 +122,21 @@ struct GlassButton: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                Circle().fill(.white.opacity(prominent ? 0.12 : 0.06))
-                Circle().strokeBorder(.white.opacity(hovering ? 0.35 : 0.14), lineWidth: 1)
+                if prominent {
+                    Circle().fill(
+                        LinearGradient(colors: [glow, glow.opacity(0.75)],
+                                       startPoint: .top, endPoint: .bottom))
+                    Circle().strokeBorder(.white.opacity(hovering ? 0.5 : 0.25), lineWidth: 1)
+                } else {
+                    Circle().fill(.white.opacity(0.06))
+                    Circle().strokeBorder(.white.opacity(hovering ? 0.35 : 0.14), lineWidth: 1)
+                }
                 Image(systemName: symbol)
                     .font(.system(size: size * 0.30, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(prominent ? .white : .white.opacity(0.85))
             }
             .frame(width: size, height: size)
-            .shadow(color: glow.opacity(prominent ? 0.5 : 0), radius: hovering ? 18 : 10)
+            .shadow(color: glow.opacity(prominent ? 0.55 : 0), radius: hovering ? 22 : 14, y: 2)
             .scaleEffect(hovering ? 1.05 : 1)
             .animation(.spring(duration: 0.25), value: hovering)
             .contentShape(Circle())

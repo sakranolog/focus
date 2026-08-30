@@ -25,6 +25,16 @@ struct FocusApp: App {
                                                      onPrimary: {}, onPeek: {}, onEnd: {})
                     .environment(engine)
                     .frame(width: 900, height: 560), to: path)
+            } else if args.contains("motivation") {
+                Self.writeSnapshot(
+                    ZStack {
+                        Color(red: 0.10, green: 0.10, blue: 0.13)
+                        MotivationToastView(message: "Deep in it. Stay there.",
+                                            caption: "14:32 left",
+                                            theme: PhaseTheme.theme(for: .focus),
+                                            startVisible: true)
+                    }
+                    .frame(width: 700, height: 230), to: path)
             } else if let arg = args.first(where: { $0.hasPrefix("onboarding") }) {
                 let n = Int(arg.dropFirst("onboarding".count)) ?? 0
                 Self.writeSnapshot(

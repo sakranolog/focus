@@ -270,6 +270,8 @@ struct SettingsView: View {
         Toggle("Auto-start next focus", isOn: $engine.settings.autoStartFocus)
         Toggle("Flow mode — extend while active", isOn: $engine.settings.flowModeOn)
             .help("If you're still typing when the timer ends, it keeps rolling until you go idle.")
+        Toggle("Motivational nudges on screen", isOn: $engine.settings.motivationOn)
+            .help("Every few minutes of focus, a glowing message drifts up from the bottom of your screen. Click-through — it never interrupts.")
         Toggle("Confirm skip/reset, offer to log", isOn: $engine.settings.confirmAbort)
             .help("Skipping or resetting mid-session asks first and can log the partial time.")
     }
